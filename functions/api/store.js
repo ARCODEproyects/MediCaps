@@ -1,6 +1,6 @@
 // GET  /api/store  → datos públicos de la tienda (los lee la página principal)
 // PUT  /api/store  → guarda productos y textos (solo con contraseña)
-import { json, missingSetup, isAdmin, wait, readStore, sanitizeStore } from "./_lib.js";
+import { json, missingSetup, isAdmin, wait, readStore, sanitizeStore, imageIds } from "./_lib.js";
 
 export async function onRequestGet({ env }) {
   if (!env.STORE) return missingSetup(env);
@@ -23,9 +23,7 @@ export async function onRequestPut({ request, env }) {
   await env.STORE.put("store", JSON.stringify(clean));
 
   // Borra fotos que ya no usa ningún producto, para no llenar el espacio.
-  const used = new Set(
-    clean.products.map((p) => p.image).filter((u) => u.startsWith("/api/images/")).map((u) => u.slice("/api/images/".length))
-  );
+  const used = imageIds(clean);
   let cursor;
   do {
     const page = await env.STORE.list({ prefix: "img:", cursor });

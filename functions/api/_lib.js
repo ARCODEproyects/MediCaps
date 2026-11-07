@@ -5,22 +5,25 @@ export const DEFAULT_STORE = {
   settings: {
     storeName: "MediCaps",
     tagline: "Haute Chirurgie",
-    announcement: "Pedidos directos por WhatsApp · Envíos a todo México",
+    announcement: "",
+    shippingArea: "Guadalajara",
     whatsapp: "+52 1 33 2201 4797",
     currency: "MXN",
     heroBadge: "Colección 2026",
     heroTitle: "La elegancia clásica también entra al quirófano.",
     heroText: "Gorros quirúrgicos ergonómicos, con telas antifluido e hipoalergénicas y confección artesanal para profesionales de la salud.",
     aboutTitle: "Hacemos de la indumentaria médica un oficio de sastre.",
-    aboutText: "Un gorro quirúrgico es la primera prenda que te pones antes de entrar a cirugía. Por eso cuidamos el patrón, la tela y cada costura, para que sea cómodo durante jornadas largas y se vea impecable lavado tras lavado.\n\nCada pieza se confecciona a mano y puede llevar tu nombre bordado."
+    freeShippingMin: 500,
+    categories: ["Edición Limitada", "Liso", "Diseño Exclusivo", "Estampado Ilustrado"],
+    aboutText: "Un gorro quirúrgico es la primera prenda que te pones antes de entrar a cirugía. Por eso cuidamos el patrón, la tela y cada costura, para que sea cómodo durante jornadas largas y se vea impecable lavado tras lavado.\n\nCada pieza se confecciona a mano en Guadalajara."
   },
   products: [
-    { id: "p1", name: "Gorro Botanical", category: "Edición Limitada", price: 320, color: "#4A5D4E", pattern: "Hojas de salvia", fabric: "Algodón orgánico antifluido", description: "Estampado de hojas en verde salvia. Ajuste trasero con cintas y botones salva-orejas.", tag: "Más vendido", image: "", available: true },
-    { id: "p2", name: "Gorro Minimal Taupe", category: "Liso", price: 280, color: "#8C7A6B", pattern: "Taupe mate", fabric: "Tejido stretch en 4 direcciones", description: "Liso, sobrio y muy ligero. Ideal para turnos largos.", tag: "Esencial", image: "", available: true },
-    { id: "p3", name: "Gorro Terrazzo", category: "Diseño Exclusivo", price: 300, color: "#C8945F", pattern: "Mármol y terrazzo", fabric: "Antimicrobiano transpirable", description: "Estampado tipo terrazzo en tonos arena y miel.", tag: "Nuevo", image: "", available: true },
-    { id: "p4", name: "Gorro Terracota", category: "Liso", price: 290, color: "#B5654B", pattern: "Terracota cálido", fabric: "Algodón ligero", description: "Color terracota que no se deslava. Banda interior absorbente.", tag: "Popular", image: "", available: true },
-    { id: "p5", name: "Gorro Little Stars", category: "Estampado Ilustrado", price: 310, color: "#3B4A6B", pattern: "Constelaciones suaves", fabric: "Antifluido de alta densidad", description: "Pensado para pediatría: estrellas pequeñas sobre azul noche.", tag: "Pediatría", image: "", available: true },
-    { id: "p6", name: "Gorro Menta Silvestre", category: "Edición Limitada", price: 300, color: "#5B8C7E", pattern: "Botánico menta", fabric: "Microfibra quirúrgica suave", description: "Hojas finas en verde menta. Edición limitada.", tag: "Edición limitada", image: "", available: true }
+    { id: "p1", name: "Gorro Botanical", category: "Edición Limitada", price: 320, color: "#4A5D4E", pattern: "Hojas de salvia", fabric: "Algodón orgánico antifluido", description: "Estampado de hojas en verde salvia. Ajuste trasero con cintas y botones salva-orejas.", tag: "Más vendido", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p2", name: "Gorro Minimal Taupe", category: "Liso", price: 280, color: "#8C7A6B", pattern: "Taupe mate", fabric: "Tejido stretch en 4 direcciones", description: "Liso, sobrio y muy ligero. Ideal para turnos largos.", tag: "Esencial", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p3", name: "Gorro Terrazzo", category: "Diseño Exclusivo", price: 300, color: "#C8945F", pattern: "Mármol y terrazzo", fabric: "Antimicrobiano transpirable", description: "Estampado tipo terrazzo en tonos arena y miel.", tag: "Nuevo", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p4", name: "Gorro Terracota", category: "Liso", price: 290, color: "#B5654B", pattern: "Terracota cálido", fabric: "Algodón ligero", description: "Color terracota que no se deslava. Banda interior absorbente.", tag: "Popular", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p5", name: "Gorro Little Stars", category: "Estampado Ilustrado", price: 310, color: "#3B4A6B", pattern: "Constelaciones suaves", fabric: "Antifluido de alta densidad", description: "Pensado para pediatría: estrellas pequeñas sobre azul noche.", tag: "Pediatría", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p6", name: "Gorro Menta Silvestre", category: "Edición Limitada", price: 300, color: "#5B8C7E", pattern: "Botánico menta", fabric: "Microfibra quirúrgica suave", description: "Hojas finas en verde menta. Edición limitada.", tag: "Edición limitada", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null }
   ]
 };
 
@@ -58,13 +61,31 @@ export async function readStore(env) {
 
 // Limpia y valida lo que manda el panel antes de guardarlo.
 const str = (v, max) => String(v == null ? "" : v).slice(0, max);
-const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings);
+const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings).filter((k) => k !== "categories" && k !== "freeShippingMin");
+const okImage = (u) => !u || u.startsWith("/api/images/") || /^https:\/\//.test(u);
+
+export function imageIds(store) {
+  const ids = new Set();
+  for (const p of store.products) {
+    for (const u of [p.image, p.patternImage]) {
+      if (u && u.startsWith("/api/images/")) ids.add(u.slice("/api/images/".length));
+    }
+  }
+  return ids;
+}
 
 export function sanitizeStore(body) {
-  if (!body || typeof body !== "object" || !Array.isArray(body.products) || typeof body.settings !== "object") return null;
+  if (!body || typeof body !== "object" || !Array.isArray(body.products) || !body.settings || typeof body.settings !== "object") return null;
   if (body.products.length > 300) return null;
+
   const settings = {};
   for (const k of SETTINGS_KEYS) settings[k] = str(body.settings[k], 3000);
+  const cats = [];
+  for (const c of Array.isArray(body.settings.categories) ? body.settings.categories : []) {
+    const name = str(c, 60).trim();
+    if (name && !cats.includes(name) && cats.length < 50) cats.push(name);
+  }
+
   const seen = new Set();
   const products = [];
   for (const p of body.products) {
@@ -73,21 +94,39 @@ export function sanitizeStore(body) {
     if (!/^[\w-]{1,40}$/.test(id) || seen.has(id)) return null;
     seen.add(id);
     const image = str(p.image, 600);
-    if (image && !image.startsWith("/api/images/") && !/^https:\/\//.test(image)) return null;
-    const color = /^#[0-9a-fA-F]{3,8}$/.test(p.color) ? p.color : "#8C7A6B";
+    const patternImage = str(p.patternImage, 600);
+    if (!okImage(image) || !okImage(patternImage)) return null;
+    const category = str(p.category, 60).trim() || "General";
+    if (!cats.includes(category)) cats.push(category);
+
+    // Existencias: vacío = no se lleva conteo; 0 = agotado.
+    let stock = null;
+    if (p.stock !== null && p.stock !== undefined && p.stock !== "") {
+      const n = Math.floor(Number(p.stock));
+      if (Number.isFinite(n)) stock = Math.max(0, Math.min(100000, n));
+    } else if (p.available === false) {
+      stock = 0; // productos guardados con la versión anterior
+    }
+
     products.push({
       id,
-      name: str(p.name, 120),
-      category: str(p.category, 60) || "General",
+      name: str(p.name, 120).trim(),
+      category,
       price: Math.max(0, Math.round((Number(p.price) || 0) * 100) / 100),
-      color,
+      color: /^#[0-9a-fA-F]{3,8}$/.test(p.color) ? p.color : "#5E8C8A",
       pattern: str(p.pattern, 120),
       fabric: str(p.fabric, 120),
       description: str(p.description, 1500),
       tag: str(p.tag, 40),
       image,
-      available: p.available !== false
+      patternImage,
+      imageMode: p.imageMode === "photo" ? "photo" : "pattern",
+      patternFit: p.patternFit === "tile" ? "tile" : "cover",
+      stock
     });
   }
+  settings.categories = cats;
+  const min = Number(body.settings.freeShippingMin);
+  settings.freeShippingMin = Number.isFinite(min) ? Math.max(0, Math.round(min)) : 500;
   return { settings, products };
 }
