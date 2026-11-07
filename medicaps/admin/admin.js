@@ -34,6 +34,16 @@ function normalize(d){
   return d;
 }
 
+/* Ajustes de textos viejos: ya no hay bordados y los envíos son solo en Guadalajara.
+   Quedan como "cambios sin publicar" para que los revises y publiques. */
+function migrate(d){
+  var s=d.settings;
+  if(s.shippingArea===undefined) s.shippingArea="Guadalajara";
+  if(s.freeShippingMin===undefined) s.freeShippingMin=500;
+  if(/todo m[eé]xico/i.test(s.announcement||"")) s.announcement="";
+  if(/bordad/i.test(s.aboutText||"")) s.aboutText=s.aboutText.replace(/\s*Cada pieza se confecciona a mano y puede llevar tu nombre bordado\.?/i,"\n\nCada pieza se confecciona a mano en Guadalajara.").trim();
+}
+
 function api(method,url,body,type){
   var h={"authorization":"Bearer "+pass};
   if(type) h["content-type"]=type;
@@ -61,7 +71,7 @@ function login(p){
 function logout(msg){pass=null;saved=null;draft=null;try{sessionStorage.removeItem(KEY);}catch(e){}ui.loginError=msg||"";ui.loading=false;render();}
 function loadStore(){
   return fetch("/api/store",{cache:"no-store"}).then(function(r){return r.json();}).then(function(d){
-    saved=normalize(d);draft=clone(saved);ui.loading=false;ui.status=null;render();
+    saved=normalize(d);draft=clone(saved);migrate(draft);ui.loading=false;ui.status=null;render();
   });
 }
 
@@ -213,7 +223,8 @@ function settingsHTML(){
   function f(k,label,area){return '<div class="field"><label for="s-'+k+'">'+label+'</label>'+(area?'<textarea id="s-'+k+'" data-s="'+k+'" rows="4">'+esc(s[k])+'</textarea>':'<input id="s-'+k+'" data-s="'+k+'" value="'+esc(s[k])+'">')+'</div>';}
   return '<div class="form">'+f("storeName","Nombre de la tienda")+f("tagline","Frase bajo el logo")+
     '<div class="two">'+f("whatsapp","Número de WhatsApp (donde llegan los pedidos)")+f("currency","Moneda")+'</div>'+
-    f("announcement","Barra de anuncio (vacía para ocultarla)")+f("heroBadge","Etiqueta de portada")+f("heroTitle","Título de portada")+f("heroText","Texto de portada",true)+
+    '<div class="two">'+f("shippingArea","Zona de envíos")+'<div class="field"><label for="s-freeShippingMin">Envío gratis en compras de más de ($)</label><input id="s-freeShippingMin" data-s="freeShippingMin" type="number" min="0" step="1" value="'+esc(s.freeShippingMin)+'"><span class="note">Pon 0 para no ofrecer envío gratis.</span></div></div>'+
+    f("announcement","Barra de anuncio (vacía = muestra el aviso de envíos)")+f("heroBadge","Etiqueta de portada")+f("heroTitle","Título de portada")+f("heroText","Texto de portada",true)+
     f("aboutTitle","Título de “Nosotros”")+f("aboutText","Texto de “Nosotros”",true)+'</div>';
 }
 
@@ -266,7 +277,7 @@ app.addEventListener("click",function(ev){
 app.addEventListener("input",function(ev){
   var el=ev.target;
   if(el.id==="new-cat"){ui.newCat=el.value;return;}
-  if(el.dataset.s){draft.settings[el.dataset.s]=el.value;changed();return;}
+  if(el.dataset.s){draft.settings[el.dataset.s]=el.dataset.s==="freeShippingMin"?Math.max(0,Math.round(Number(el.value)||0)):el.value;changed();return;}
   if(el.dataset.e&&ui.editing){ui.editing[el.dataset.e]=el.value;}
 });
 app.addEventListener("change",function(ev){

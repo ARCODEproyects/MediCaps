@@ -6,6 +6,7 @@
   - llevar las **existencias** de cada uno (con 0 aparece como *Agotado*, pero sigue en el catálogo);
   - crear, renombrar, ordenar y borrar **categorías**;
   - subir el **diseño o estampado**, que se acomoda solo a la forma del gorro, y/o una **foto real del gorro**;
+  - definir la zona de envíos y el monto para envío gratis (por defecto: Guadalajara, más de $500);
   - cambiar los textos y el número de WhatsApp. Le das **Publicar cambios** y la tienda se actualiza sola, sin volver a subir nada. Puede tardar hasta un minuto en verse en todos lados.
 
 Todo corre en Cloudflare: **Pages** sirve las páginas, **Pages Functions** (carpeta `functions/`) hace de API y **KV** guarda productos y fotos. No necesitas otra base de datos ni otro servidor. El plan gratis alcanza de sobra.

@@ -5,15 +5,17 @@ export const DEFAULT_STORE = {
   settings: {
     storeName: "MediCaps",
     tagline: "Haute Chirurgie",
-    announcement: "Pedidos directos por WhatsApp · Envíos a todo México",
+    announcement: "",
+    shippingArea: "Guadalajara",
     whatsapp: "+52 1 33 2201 4797",
     currency: "MXN",
     heroBadge: "Colección 2026",
     heroTitle: "La elegancia clásica también entra al quirófano.",
     heroText: "Gorros quirúrgicos ergonómicos, con telas antifluido e hipoalergénicas y confección artesanal para profesionales de la salud.",
     aboutTitle: "Hacemos de la indumentaria médica un oficio de sastre.",
+    freeShippingMin: 500,
     categories: ["Edición Limitada", "Liso", "Diseño Exclusivo", "Estampado Ilustrado"],
-    aboutText: "Un gorro quirúrgico es la primera prenda que te pones antes de entrar a cirugía. Por eso cuidamos el patrón, la tela y cada costura, para que sea cómodo durante jornadas largas y se vea impecable lavado tras lavado.\n\nCada pieza se confecciona a mano y puede llevar tu nombre bordado."
+    aboutText: "Un gorro quirúrgico es la primera prenda que te pones antes de entrar a cirugía. Por eso cuidamos el patrón, la tela y cada costura, para que sea cómodo durante jornadas largas y se vea impecable lavado tras lavado.\n\nCada pieza se confecciona a mano en Guadalajara."
   },
   products: [
     { id: "p1", name: "Gorro Botanical", category: "Edición Limitada", price: 320, color: "#4A5D4E", pattern: "Hojas de salvia", fabric: "Algodón orgánico antifluido", description: "Estampado de hojas en verde salvia. Ajuste trasero con cintas y botones salva-orejas.", tag: "Más vendido", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
@@ -59,7 +61,7 @@ export async function readStore(env) {
 
 // Limpia y valida lo que manda el panel antes de guardarlo.
 const str = (v, max) => String(v == null ? "" : v).slice(0, max);
-const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings).filter((k) => k !== "categories");
+const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings).filter((k) => k !== "categories" && k !== "freeShippingMin");
 const okImage = (u) => !u || u.startsWith("/api/images/") || /^https:\/\//.test(u);
 
 export function imageIds(store) {
@@ -124,5 +126,7 @@ export function sanitizeStore(body) {
     });
   }
   settings.categories = cats;
+  const min = Number(body.settings.freeShippingMin);
+  settings.freeShippingMin = Number.isFinite(min) ? Math.max(0, Math.round(min)) : 500;
   return { settings, products };
 }

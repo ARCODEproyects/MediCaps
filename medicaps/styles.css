@@ -273,3 +273,23 @@ footer small{color:var(--muted);font-size:12px}
   .adm-row .adm-actions{grid-column:1/-1;justify-content:flex-end}
 }
 .field .color-in{width:40px;height:34px;padding:2px;flex:none;cursor:pointer}
+
+/* envío */
+.ship{border:1px solid var(--line);background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.ship-txt{display:flex;gap:8px;align-items:center;font-size:13px}
+.ship-txt .ico{color:var(--accent)}
+.ship-bar{height:4px;background:var(--band);overflow:hidden}
+.ship-bar i{display:block;height:100%;background:var(--accent);transition:width .3s}
+.ship.ok{border-color:var(--wa)}
+.ship.ok .ico,.ship.ok b{color:var(--wa)}
+.ship.ok .ship-bar i{background:var(--wa)}
+.sum{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ship-note{display:flex;gap:6px;align-items:center}
+.ship-note .ico{color:var(--accent)}
+
+/* pedido enviado */
+.sent{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:40px 12px}
+.sent-ico{width:52px;height:52px;border-radius:50%;background:color-mix(in srgb,var(--wa) 14%,var(--surface));color:var(--wa);display:grid;place-items:center}
+.sent-ico .ico{width:24px;height:24px}
+.sent p{font-family:var(--display);font-size:22px;margin:0}
+.sent .note{max-width:32ch}
