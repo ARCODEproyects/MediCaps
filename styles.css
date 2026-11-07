@@ -293,3 +293,19 @@ footer small{color:var(--muted);font-size:12px}
 .sent-ico .ico{width:24px;height:24px}
 .sent p{font-family:var(--display);font-size:22px;margin:0}
 .sent .note{max-width:32ch}
+
+/* carrusel de la portada */
+.carousel{overflow:hidden;cursor:pointer}
+.carousel .slide{position:absolute;inset:0;display:grid;place-items:center;padding:24px 24px 116px;opacity:0;visibility:hidden;transform:scale(.97);transition:opacity .7s ease,transform .7s ease,visibility 0s linear .7s}
+.carousel .slide.is-on{opacity:1;visibility:visible;transform:none;transition:opacity .7s ease,transform .7s ease}
+.carousel .slide > svg{width:92%;max-width:420px}
+.carousel .slide.photo{padding:0}
+.carousel .slide.photo .hero-photo{position:absolute;inset:0}
+.carousel .caption{z-index:2}
+.car-btn{position:absolute;top:42%;z-index:3;width:38px;height:38px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--ink);opacity:.85;transition:opacity .2s,background .2s}
+.car-btn:hover{opacity:1;background:var(--band)}
+.car-btn.prev{left:10px}.car-btn.next{right:10px}
+.dots{position:absolute;left:0;right:0;bottom:98px;z-index:3;display:flex;justify-content:center;gap:7px;flex-wrap:wrap;padding-inline:40px}
+.dots button{width:7px;height:7px;border-radius:50%;background:var(--line);padding:0;transition:background .2s,transform .2s}
+.dots button[aria-current="true"]{background:var(--accent);transform:scale(1.35)}
+@media (prefers-reduced-motion:reduce){.carousel .slide{transform:none}}

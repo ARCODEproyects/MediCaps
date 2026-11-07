@@ -40,6 +40,7 @@ function icon(name){
     shield:'<path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-3z"/><path d="m9 12 2 2 4-4"/>',
     feather:'<path d="M20 4c-6 0-12 4-13 13l-3 3"/><path d="M7 17h7c3 0 5-3 6-7"/>',
     truck:'<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+    left:'<path d="m15 6-6 6 6 6"/>', right:'<path d="m9 6 6 6-6 6"/>',
     wa:'<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7L4 20z"/><path d="M9 9.5c.3 2 2.5 4.2 4.5 4.5l1-1.2 1.8.8c-.2 1-1 1.7-2 1.6-3-.3-6-3.3-6.3-6.3-.1-1 .6-1.8 1.6-2l.8 1.8L9 9.5z"/>'}[name];
   return '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'+p+'</svg>';
 }
@@ -132,6 +133,55 @@ function filtered(){
   // los agotados se muestran al final del catálogo
   return list.filter(function(p){return !soldOut(p);}).concat(list.filter(soldOut));
 }
+/* ---------- carrusel de la portada ---------- */
+var hero={i:0,timer:null,paused:false};
+function heroSlides(){
+  var list=PRODUCTS.filter(function(p){return !soldOut(p);});
+  return list.length?list:PRODUCTS.slice(0,1);
+}
+function carouselHTML(slides){
+  if(!slides.length) return '<div class="art">'+capSVG({color:"#5E8C8A",gradient:true})+'</div>';
+  if(hero.i>=slides.length) hero.i=0;
+  var multi=slides.length>1;
+  return '<div class="art carousel" id="hero-car" aria-roledescription="carrusel" aria-label="Diseños disponibles">'+
+    slides.map(function(p,i){
+      var art=MC.usesPhoto(p)?'<img src="'+esc(p.image)+'" alt="" class="hero-photo">':capSVG({color:p.color,pattern:p.patternImage,fit:p.patternFit,gradient:!p.patternImage});
+      return '<div class="slide'+(i===hero.i?' is-on':'')+(MC.usesPhoto(p)?' photo':'')+'" data-a="quick" data-id="'+esc(p.id)+'" role="group" aria-roledescription="diapositiva" aria-label="'+(i+1)+' de '+slides.length+': '+esc(p.name)+'"'+(i===hero.i?'':' aria-hidden="true"')+'>'+art+
+        '<div class="caption"><b>'+esc(p.name)+'</b><span>'+esc(p.category)+' · '+moneyShort(p.price)+'</span></div></div>';
+    }).join("")+
+    (multi?'<button class="car-btn prev" data-a="hero-step" data-d="-1" aria-label="Diseño anterior">'+icon("left")+'</button>'+
+      '<button class="car-btn next" data-a="hero-step" data-d="1" aria-label="Siguiente diseño">'+icon("right")+'</button>'+
+      '<div class="dots">'+slides.map(function(p,i){return '<button data-a="hero-go" data-i="'+i+'" aria-label="Ver '+esc(p.name)+'"'+(i===hero.i?' aria-current="true"':'')+'></button>';}).join("")+'</div>':'')+
+  '</div>';
+}
+/* cambia de diapositiva sin redibujar toda la página */
+function heroShow(i){
+  var car=document.getElementById("hero-car"); if(!car) return;
+  var sl=car.querySelectorAll(".slide"), dots=car.querySelectorAll(".dots button"), n=sl.length; if(n<2) return;
+  hero.i=((i%n)+n)%n;
+  sl.forEach(function(el,k){var on=k===hero.i;el.classList.toggle("is-on",on);if(on)el.removeAttribute("aria-hidden");else el.setAttribute("aria-hidden","true");});
+  dots.forEach(function(el,k){if(k===hero.i)el.setAttribute("aria-current","true");else el.removeAttribute("aria-current");});
+}
+function heroStart(){
+  if(hero.timer) return;
+  hero.timer=setInterval(function(){
+    if(hero.paused||document.hidden||ui.quick||ui.cartOpen) return;
+    heroShow(hero.i+1);
+  },3800);
+}
+var reduceMotion=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+app.addEventListener("mouseover",function(ev){hero.paused=!!ev.target.closest("#hero-car");});
+app.addEventListener("focusin",function(ev){if(ev.target.closest("#hero-car"))hero.paused=true;});
+app.addEventListener("focusout",function(ev){if(ev.target.closest("#hero-car"))hero.paused=false;});
+(function(){ // deslizar con el dedo en el celular
+  var x0=null;
+  app.addEventListener("touchstart",function(ev){x0=ev.target.closest("#hero-car")?ev.touches[0].clientX:null;},{passive:true});
+  app.addEventListener("touchend",function(ev){
+    if(x0===null) return; var dx=ev.changedTouches[0].clientX-x0; x0=null;
+    if(Math.abs(dx)>40){heroShow(hero.i+(dx<0?1:-1));hero.swiped=Date.now();}
+  });
+})();
+
 function heroTitle(t){
   t=esc(t||"");var w=t.split(" ");if(w.length<4)return t;
   var a=Math.floor(w.length*0.45),b=Math.min(w.length,a+2);
@@ -146,12 +196,10 @@ function render(){
     '<div class="actions"><button class="bag-btn" data-a="cart-open" aria-label="Abrir bolsa">'+icon("bag")+'<span class="lbl">Bolsa</span>'+(cartCount()?'<span class="count">'+cartCount()+'</span>':'')+'</button></div>'+
     '</div></header>';
   if(ui.view==="shop"){
-    var hp=PRODUCTS.find(function(p){return !soldOut(p);})||PRODUCTS[0];
-    var heroArt=hp&&MC.usesPhoto(hp)?'<img src="'+esc(hp.image)+'" alt="" class="hero-photo">':capSVG({color:hp?hp.color:"#5E8C8A",pattern:hp&&hp.patternImage,fit:hp&&hp.patternFit,gradient:!(hp&&hp.patternImage)});
+    var slides=heroSlides();
     h+='<section class="hero"><div class="wrap"><div><span class="pill"><i></i>'+esc(s.heroBadge)+'</span><h2>'+heroTitle(s.heroTitle)+'</h2><p class="lead">'+esc(s.heroText)+'</p>'+
       '<div class="cta-row"><button class="btn btn-dark" data-a="scroll">Ver catálogo</button><a class="btn btn-line" href="'+esc(waLink("Hola, quiero información sobre sus gorros quirúrgicos."))+'" target="_blank" rel="noopener">'+icon("wa")+' Escríbenos</a></div></div>'+
-      '<div class="showcase"><div class="ghost"></div><div class="frame"><div class="art">'+heroArt+
-      '<div class="caption"><b>'+esc(hp?hp.name:"Gorros quirúrgicos")+'</b><span>'+esc(freeMin()>0?"Envío gratis desde "+moneyShort(freeMin()):"Envíos en "+(s.shippingArea||"Guadalajara"))+'</span></div></div></div></div></div></section>';
+      '<div class="showcase"><div class="ghost"></div><div class="frame">'+carouselHTML(slides)+'</div></div></div></section>';
     h+='<section class="catalog" id="catalog"><div class="wrap"><div class="cat-head"><div><span class="eyebrow">Catálogo</span><h3>Nuestros gorros</h3></div>'+
       '<div class="filters"><div class="search">'+icon("search")+'<input id="q" type="search" placeholder="Buscar estampado, color…" value="'+esc(ui.q)+'" aria-label="Buscar"></div>'+
       '<div class="chips">'+categories().map(function(c){return '<button class="chip" data-a="cat" data-v="'+esc(c)+'" aria-pressed="'+(ui.cat===c)+'">'+esc(c)+'</button>';}).join("")+'</div></div></div>'+
@@ -240,7 +288,9 @@ app.addEventListener("click",function(ev){
     case "reset": ui.cat="Todos"; ui.q=""; render(); break;
     case "retry": loading=true; loadFailed=false; render(); loadStore(); break;
     case "add": addToCart(t.dataset.id,1); break;
-    case "quick": ui.quick=t.dataset.id; ui.quickQty=1; ui.quickAlt=false; render(); break;
+    case "hero-step": heroShow(hero.i+Number(t.dataset.d)); break;
+    case "hero-go": heroShow(Number(t.dataset.i)); break;
+    case "quick": if(hero.swiped&&Date.now()-hero.swiped<400) break; ui.quick=t.dataset.id; ui.quickQty=1; ui.quickAlt=false; render(); break;
     case "qalt": ui.quickAlt=t.dataset.v==="1"; render(); break;
     case "qq": var qp=find(ui.quick); ui.quickQty=Math.max(1,Math.min(qp?stockLeft(qp):99,ui.quickQty+Number(t.dataset.d))); render(); break;
     case "add-quick": addToCart(ui.quick,ui.quickQty); break;
@@ -273,4 +323,5 @@ document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&(ui.quick
 
 render();
 loadStore();
+if(!reduceMotion) heroStart();
 })();
