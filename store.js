@@ -14,7 +14,7 @@ var CONFIG = {
 
 var PRODUCTS = [];
 var loading = true, loadFailed = false;
-var ui = { view:"shop", cat:"Todos", q:"", cartOpen:false, quick:null, quickQty:1, quickAlt:false, buyerName:"", buyerNote:"", sent:null };
+var ui = { view:"shop", cat:"Todos", q:"", cartOpen:false, quick:null, quickQty:1, qv:null, buyerName:"", buyerNote:"", sent:null };
 var cart = loadCart();
 var app = document.getElementById("app");
 
@@ -63,6 +63,7 @@ function loadStore(){
     .then(function(d){
       Object.keys(d.settings||{}).forEach(function(k){CONFIG[k]=d.settings[k];});
       PRODUCTS=Array.isArray(d.products)?d.products:[];
+      MC.setTemplates(CONFIG.templates);
       document.title=CONFIG.storeName+" · Gorros quirúrgicos";
       cleanCart();
     })
@@ -140,13 +141,13 @@ function heroSlides(){
   return list.length?list:PRODUCTS.slice(0,1);
 }
 function carouselHTML(slides){
-  if(!slides.length) return '<div class="art">'+capSVG({color:"#5E8C8A",gradient:true})+'</div>';
+  if(!slides.length) return '<div class="art">'+capSVG({color:"#3C7F86"})+'</div>';
   if(hero.i>=slides.length) hero.i=0;
   var multi=slides.length>1;
   return '<div class="art carousel" id="hero-car" aria-roledescription="carrusel" aria-label="Diseños disponibles">'+
     slides.map(function(p,i){
-      var art=MC.usesPhoto(p)?'<img src="'+esc(p.image)+'" alt="" class="hero-photo">':capSVG({color:p.color,pattern:p.patternImage,fit:p.patternFit,gradient:!p.patternImage});
-      return '<div class="slide'+(i===hero.i?' is-on':'')+(MC.usesPhoto(p)?' photo':'')+'" data-a="quick" data-id="'+esc(p.id)+'" role="group" aria-roledescription="diapositiva" aria-label="'+(i+1)+' de '+slides.length+': '+esc(p.name)+'"'+(i===hero.i?'':' aria-hidden="true"')+'>'+art+
+      var v0=MC.views(p)[0], art=visual(p,v0);
+      return '<div class="slide'+(i===hero.i?' is-on':'')+(MC.isDrawn(v0)?'':' photo')+'" data-a="quick" data-id="'+esc(p.id)+'" role="group" aria-roledescription="diapositiva" aria-label="'+(i+1)+' de '+slides.length+': '+esc(p.name)+'"'+(i===hero.i?'':' aria-hidden="true"')+'>'+art+
         '<div class="caption"><b>'+esc(p.name)+'</b><span>'+esc(p.category)+' · '+moneyShort(p.price)+'</span></div></div>';
     }).join("")+
     (multi?'<button class="car-btn prev" data-a="hero-step" data-d="-1" aria-label="Diseño anterior">'+icon("left")+'</button>'+
@@ -224,7 +225,7 @@ function gridHTML(){
   var list=filtered();
   if(!list.length) return '<div class="empty"><p>No encontramos gorros con esa búsqueda.</p><button class="link" data-a="reset">Quitar filtros</button></div>';
   return '<div class="grid">'+list.map(function(p){
-    var off=soldOut(p), photo=MC.usesPhoto(p);
+    var off=soldOut(p), photo=!MC.isDrawn(MC.views(p)[0]);
     return '<article class="card'+(off?' is-out':'')+'" style="--pc:'+esc(p.color)+'"><div class="vis'+(photo?' photo':'')+'" data-a="quick" data-id="'+esc(p.id)+'">'+(p.tag&&!off?'<span class="tag">'+esc(p.tag)+'</span>':'')+(off?'<span class="soldout">Agotado</span>':'')+visual(p)+'</div>'+
       '<div class="info"><div class="row"><div><span class="eyebrow">'+esc(p.category)+'</span><h4>'+esc(p.name)+'</h4></div><span class="price">'+moneyShort(p.price)+'</span></div>'+
       (p.description?'<p class="desc">'+esc(p.description)+'</p>':'')+
@@ -238,7 +239,7 @@ function cartHTML(){
   var body=lines.length?lines.map(function(l){
     var k=esc(l.c.id);
     var full=inCart(l.p.id)>=stockLeft(l.p);
-    return '<div class="line-item"><div class="thumb'+(MC.usesPhoto(l.p)?' photo':'')+'" style="--pc:'+esc(l.p.color)+'">'+visual(l.p)+'</div><div><h5>'+esc(l.p.name)+'</h5><div class="meta">'+moneyShort(l.p.price)+' c/u</div>'+
+    return '<div class="line-item"><div class="thumb'+(MC.isDrawn(MC.views(l.p)[0])?'':' photo')+'" style="--pc:'+esc(l.p.color)+'">'+visual(l.p)+'</div><div><h5>'+esc(l.p.name)+'</h5><div class="meta">'+moneyShort(l.p.price)+' c/u</div>'+
       '<div class="stepper"><button data-a="qty" data-k="'+k+'" data-d="-1" aria-label="Quitar uno">'+icon("minus")+'</button><span>'+l.c.qty+'</span><button data-a="qty" data-k="'+k+'" data-d="1" aria-label="Agregar uno"'+(full?' disabled':'')+'>'+icon("plus")+'</button></div>'+
       (full&&isFinite(stockLeft(l.p))?'<div class="meta">Máximo disponible</div>':'')+'</div>'+
       '<div style="text-align:right"><div class="price" style="font-size:17px">'+moneyShort(l.sub)+'</div><button class="remove" data-a="rm" data-k="'+k+'">Quitar</button></div></div>';
@@ -260,12 +261,14 @@ function cartHTML(){
 }
 function quickHTML(){
   var p=find(ui.quick); if(!p) return "";
-  var off=soldOut(p), both=MC.hasBoth(p), photo=both?(MC.usesPhoto(p)!==ui.quickAlt):MC.usesPhoto(p);
+  var off=soldOut(p), vs=MC.views(p), cur=vs.indexOf(ui.qv)>=0?ui.qv:vs[0];
   var left=stockLeft(p);
   return '<div class="scrim" data-a="close-all"></div><div class="modal-wrap" data-a="close-bg"><div class="modal" role="dialog" aria-label="'+esc(p.name)+'" style="--pc:'+esc(p.color)+'">'+
     '<button class="x" data-a="close-all" aria-label="Cerrar">'+icon("x")+'</button>'+
-    '<div class="gallery"><div class="vis'+(photo?' photo':'')+'">'+visual(p,ui.quickAlt)+'</div>'+
-      (both?'<div class="views"><button data-a="qalt" data-v="0" aria-pressed="'+(!ui.quickAlt)+'">'+(MC.usesPhoto(p)?'Foto':'Diseño')+'</button><button data-a="qalt" data-v="1" aria-pressed="'+ui.quickAlt+'">'+(MC.usesPhoto(p)?'Diseño':'Foto')+'</button></div>':'')+'</div>'+
+    '<div class="gallery"><div class="vis'+(MC.isDrawn(cur)?'':' photo')+'">'+visual(p,cur)+'</div>'+
+      '<div class="thumbs" role="tablist" aria-label="Vistas del producto">'+vs.map(function(v){
+        return '<button role="tab" data-a="qv" data-v="'+v+'" aria-selected="'+(v===cur)+'" aria-label="'+esc(MC.viewName(v))+'"><span class="th'+(MC.isDrawn(v)?'':' photo')+'">'+visual(p,v)+'</span><small>'+esc(MC.viewName(v))+'</small></button>';
+      }).join("")+'</div></div>'+
     '<div class="content"><span class="eyebrow">'+esc(p.category)+'</span><h4>'+esc(p.name)+'</h4><div class="price" style="font-size:24px">'+money(p.price)+'</div>'+
     (p.description?'<p class="desc">'+esc(p.description)+'</p>':'')+
     '<dl class="specs">'+(p.pattern?'<dt>Diseño</dt><dd>'+esc(p.pattern)+'</dd>':'')+(p.fabric?'<dt>Tela</dt><dd>'+esc(p.fabric)+'</dd>':'')+
@@ -290,8 +293,8 @@ app.addEventListener("click",function(ev){
     case "add": addToCart(t.dataset.id,1); break;
     case "hero-step": heroShow(hero.i+Number(t.dataset.d)); break;
     case "hero-go": heroShow(Number(t.dataset.i)); break;
-    case "quick": if(hero.swiped&&Date.now()-hero.swiped<400) break; ui.quick=t.dataset.id; ui.quickQty=1; ui.quickAlt=false; render(); break;
-    case "qalt": ui.quickAlt=t.dataset.v==="1"; render(); break;
+    case "quick": if(hero.swiped&&Date.now()-hero.swiped<400) break; ui.quick=t.dataset.id; ui.quickQty=1; ui.qv=null; render(); break;
+    case "qv": ui.qv=t.dataset.v; render(); break;
     case "qq": var qp=find(ui.quick); ui.quickQty=Math.max(1,Math.min(qp?stockLeft(qp):99,ui.quickQty+Number(t.dataset.d))); render(); break;
     case "add-quick": addToCart(ui.quick,ui.quickQty); break;
     case "close-bg": if(ev.target===t){ui.quick=null;render();} break;

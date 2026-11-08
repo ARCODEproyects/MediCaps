@@ -6,6 +6,7 @@
   - llevar las **existencias** de cada uno (con 0 aparece como *Agotado*, pero sigue en el catálogo);
   - crear, renombrar, ordenar y borrar **categorías**;
   - subir el **diseño o estampado**, que se acomoda solo a la forma del gorro, y/o una **foto real del gorro**;
+  - crear **plantillas con foto**: subes una foto de tu maniquí con un buff liso claro, marcas la tela con la varita y todos tus diseños se pegan ahí con sombras reales;
   - definir la zona de envíos y el monto para envío gratis (por defecto: Guadalajara, más de $500);
   - cambiar los textos y el número de WhatsApp. Le das **Publicar cambios** y la tienda se actualiza sola, sin volver a subir nada. Puede tardar hasta un minuto en verse en todos lados.
 
@@ -90,3 +91,10 @@ Abre `http://localhost:8788` y `http://localhost:8788/admin` (contraseña `prueb
 - **Cambiar la contraseña**: edita el secreto `ADMIN_PASSWORD` y vuelve a desplegar.
 - **Límites gratis de KV**: 1,000 escrituras al día. Cada publicación o foto cuenta como una, así que no lo vas a alcanzar.
 - **Dominio propio**: proyecto de Pages → **Custom domains**.
+
+## Cómo tomar la foto para una plantilla
+
+- Buff **liso, blanco o gris claro**, puesto en el maniquí como lo vendes.
+- **Fondo de color**, no blanco (una pared de color, una cartulina o una tela). Así la varita distingue la tela del fondo.
+- Buena luz de un lado, para que se marquen los pliegues; sin flash directo.
+- Una foto por vista: en la cabeza de lado, de frente y el buff extendido sobre una mesa.

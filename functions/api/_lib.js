@@ -14,11 +14,12 @@ export const DEFAULT_STORE = {
     heroText: "Gorros quirúrgicos ergonómicos, con telas antifluido e hipoalergénicas y confección artesanal para profesionales de la salud.",
     aboutTitle: "Hacemos de la indumentaria médica un oficio de sastre.",
     freeShippingMin: 500,
+    templates: [],
     categories: ["Edición Limitada", "Liso", "Diseño Exclusivo", "Estampado Ilustrado"],
     aboutText: "Un gorro quirúrgico es la primera prenda que te pones antes de entrar a cirugía. Por eso cuidamos el patrón, la tela y cada costura, para que sea cómodo durante jornadas largas y se vea impecable lavado tras lavado.\n\nCada pieza se confecciona a mano en Guadalajara."
   },
   products: [
-    { id: "p1", name: "Gorro Botanical", category: "Edición Limitada", price: 320, color: "#4A5D4E", pattern: "Hojas de salvia", fabric: "Algodón orgánico antifluido", description: "Estampado de hojas en verde salvia. Ajuste trasero con cintas y botones salva-orejas.", tag: "Más vendido", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
+    { id: "p1", name: "Gorro Botanical", category: "Edición Limitada", price: 320, color: "#4A5D4E", pattern: "Hojas de salvia", fabric: "Algodón orgánico antifluido", description: "Estampado de hojas en verde salvia. Tipo buff, con elástico suave alrededor.", tag: "Más vendido", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
     { id: "p2", name: "Gorro Minimal Taupe", category: "Liso", price: 280, color: "#8C7A6B", pattern: "Taupe mate", fabric: "Tejido stretch en 4 direcciones", description: "Liso, sobrio y muy ligero. Ideal para turnos largos.", tag: "Esencial", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
     { id: "p3", name: "Gorro Terrazzo", category: "Diseño Exclusivo", price: 300, color: "#C8945F", pattern: "Mármol y terrazzo", fabric: "Antimicrobiano transpirable", description: "Estampado tipo terrazzo en tonos arena y miel.", tag: "Nuevo", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
     { id: "p4", name: "Gorro Terracota", category: "Liso", price: 290, color: "#B5654B", pattern: "Terracota cálido", fabric: "Algodón ligero", description: "Color terracota que no se deslava. Banda interior absorbente.", tag: "Popular", image: "", patternImage: "", imageMode: "pattern", patternFit: "cover", stock: null },
@@ -61,13 +62,18 @@ export async function readStore(env) {
 
 // Limpia y valida lo que manda el panel antes de guardarlo.
 const str = (v, max) => String(v == null ? "" : v).slice(0, max);
-const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings).filter((k) => k !== "categories" && k !== "freeShippingMin");
+const SETTINGS_KEYS = Object.keys(DEFAULT_STORE.settings).filter((k) => k !== "categories" && k !== "freeShippingMin" && k !== "templates");
 const okImage = (u) => !u || u.startsWith("/api/images/") || /^https:\/\//.test(u);
 
 export function imageIds(store) {
   const ids = new Set();
   for (const p of store.products) {
     for (const u of [p.image, p.patternImage]) {
+      if (u && u.startsWith("/api/images/")) ids.add(u.slice("/api/images/".length));
+    }
+  }
+  for (const t of (store.settings && store.settings.templates) || []) {
+    for (const u of [t.photo, t.mask]) {
       if (u && u.startsWith("/api/images/")) ids.add(u.slice("/api/images/".length));
     }
   }
@@ -126,6 +132,15 @@ export function sanitizeStore(body) {
     });
   }
   settings.categories = cats;
+  // plantillas con foto: foto del maniquí + máscara de la tela
+  const tpls = [];
+  for (const t of Array.isArray(body.settings.templates) ? body.settings.templates : []) {
+    if (!t || typeof t !== "object" || tpls.length >= 6) continue;
+    const id = str(t.id, 40), photo = str(t.photo, 300), mask = str(t.mask, 300);
+    if (!/^[\w-]{1,40}$/.test(id) || !photo.startsWith("/api/images/") || !mask.startsWith("/api/images/")) continue;
+    tpls.push({ id, name: str(t.name, 40).trim() || "Plantilla", photo, mask });
+  }
+  settings.templates = tpls;
   const min = Number(body.settings.freeShippingMin);
   settings.freeShippingMin = Number.isFinite(min) ? Math.max(0, Math.round(min)) : 500;
   return { settings, products };

@@ -1,7 +1,7 @@
 (function(){
 "use strict";
 var esc=MC.esc, visual=MC.visual, soldOut=MC.soldOut;
-var SWATCHES=["#5E8C8A","#3C7F86","#4F7FA8","#3B4A6B","#4A5D4E","#7FA88F","#C66A84","#B5654B","#C8945F","#7B5C8E","#2C3A40","#D9DEE0"];
+var SWATCHES=["#3C7F86","#5E8C8A","#3C7F86","#4F7FA8","#3B4A6B","#4A5D4E","#7FA88F","#C66A84","#B5654B","#C8945F","#7B5C8E","#2C3A40","#D9DEE0"];
 var KEY="mc-admin-pass";
 var pass=null; try{pass=sessionStorage.getItem(KEY);}catch(e){}
 var saved=null, draft=null;
@@ -31,6 +31,7 @@ function normalize(d){
     if(!p.patternFit) p.patternFit="cover";
   });
   d.settings.categories=list;
+  if(!Array.isArray(d.settings.templates)) d.settings.templates=[];
   return d;
 }
 
@@ -115,6 +116,7 @@ function uploadPhoto(file,slot){
 
 /* ---------- vistas ---------- */
 function render(){
+  if(draft) MC.setTemplates(draft.settings.templates);
   if(!pass||!draft){app.innerHTML=loginHTML();var i=document.getElementById("pw");if(i&&!ui.loading)i.focus();return;}
   var active=document.activeElement,aid=active&&active.id,pos=aid&&active.selectionStart;
   app.innerHTML=adminHTML();
@@ -138,9 +140,11 @@ function adminHTML(){
   h+='<main class="wrap adm-main"><div class="tabs" role="tablist">'+
     '<button role="tab" data-a="tab" data-v="products" aria-selected="'+(ui.tab==="products")+'">Productos ('+draft.products.length+')</button>'+
     '<button role="tab" data-a="tab" data-v="cats" aria-selected="'+(ui.tab==="cats")+'">Categorías ('+cats().length+')</button>'+
+    '<button role="tab" data-a="tab" data-v="tpl" aria-selected="'+(ui.tab==="tpl")+'">Plantillas ('+draft.settings.templates.length+')</button>'+
     '<button role="tab" data-a="tab" data-v="settings" aria-selected="'+(ui.tab==="settings")+'">Datos de la tienda</button></div>';
   if(ui.tab==="products") h+=ui.editing?editorHTML():listHTML(out);
   else if(ui.tab==="cats") h+=catsHTML();
+  else if(ui.tab==="tpl") h+=tplHTML();
   else h+=settingsHTML();
   h+='</main>';
   h+='<div class="publish-bar"><div class="wrap"><div class="status '+stCls+'" role="status"><i></i>'+esc(stTxt)+'</div>'+
@@ -161,7 +165,7 @@ function listHTML(out){
   if(!draft.products.length) return h+'<p class="note">No hay productos. Agrega el primero.</p>';
   return h+draft.products.map(function(p,i){
     var del=ui.confirmDel===p.id;
-    return '<div class="adm-row'+(soldOut(p)?' is-out':'')+'"><div class="thumb'+(MC.usesPhoto(p)?' photo':'')+'" style="--pc:'+esc(p.color)+'">'+visual(p)+'</div>'+
+    return '<div class="adm-row'+(soldOut(p)?' is-out':'')+'"><div class="thumb'+(MC.isDrawn(MC.views(p)[0])?'':' photo')+'" style="--pc:'+esc(p.color)+'">'+visual(p)+'</div>'+
       '<div style="min-width:0"><b>'+esc(p.name)+(soldOut(p)?'<span class="badge out">Agotado</span>':'')+'</b><small>'+moneyShort(p.price)+' · '+esc(p.category)+'</small></div>'+
       stockCell(p,i)+
       '<div class="adm-actions">'+(del?'<button class="mini" data-a="del-no">No</button><button class="mini danger" data-a="del-yes" data-id="'+esc(p.id)+'">Sí, eliminar</button>':
@@ -181,9 +185,11 @@ function editorHTML(){
   function f(k,label,type,extra){return '<div class="field"><label for="e-'+k+'">'+label+'</label><input id="e-'+k+'" data-e="'+k+'" type="'+(type||"text")+'" value="'+esc(p[k]==null?"":p[k])+'"'+(extra||"")+'></div>';}
   var both=MC.hasBoth(p);
   return '<div class="editor">'+
-    '<div class="preview-col"><span class="eyebrow">Así se verá</span><div class="preview'+(MC.usesPhoto(p)?' photo':'')+'" style="--pc:'+esc(p.color)+'">'+visual(p)+(soldOut(p)?'<span class="soldout">Agotado</span>':'')+'</div>'+
-      (both?'<div class="field"><label>Imagen principal en la tienda</label><div class="seg"><button data-a="mode" data-v="pattern" aria-pressed="'+(p.imageMode!=="photo")+'">Gorro con diseño</button><button data-a="mode" data-v="photo" aria-pressed="'+(p.imageMode==="photo")+'">Foto del gorro</button></div><span class="note">El cliente puede ver las dos en el detalle.</span></div>':'')+
-      (p.patternImage&&!MC.usesPhoto(p)?'<div class="field"><label>Cómo acomodar el diseño</label><div class="seg"><button data-a="fit" data-v="cover" aria-pressed="'+(p.patternFit!=="tile")+'">Llenar el gorro</button><button data-a="fit" data-v="tile" aria-pressed="'+(p.patternFit==="tile")+'">Repetir como tela</button></div></div>':'')+
+    '<div class="preview-col"><span class="eyebrow">Así se verá</span><div class="preview'+(MC.isDrawn(MC.views(p)[0])?'':' photo')+'" style="--pc:'+esc(p.color)+'">'+visual(p)+(soldOut(p)?'<span class="soldout">Agotado</span>':'')+'</div>'+
+      '<div class="mini-views">'+MC.views(p).filter(function(v){return v!=="photo";}).map(function(v){return '<figure><div class="th'+(MC.isDrawn(v)?'':' photo')+'">'+visual(p,v)+'</div><figcaption>'+esc(MC.viewName(v))+'</figcaption></figure>';}).join("")+'</div>'+
+      (MC.templates().length?'':'<p class="note">Estas son plantillas dibujadas. Para que se vea como foto real, crea una en la pestaña <b>Plantillas</b>.</p>')+
+      (both?'<div class="field"><label>Imagen principal en la tienda</label><div class="seg"><button data-a="mode" data-v="pattern" aria-pressed="'+(p.imageMode!=="photo")+'">Diseño en plantilla</button><button data-a="mode" data-v="photo" aria-pressed="'+(p.imageMode==="photo")+'">Foto real</button></div><span class="note">El cliente puede ver las dos en el detalle.</span></div>':'')+
+      (p.patternImage?'<div class="field"><label>Cómo acomodar el diseño</label><div class="seg"><button data-a="fit" data-v="cover" aria-pressed="'+(p.patternFit!=="tile")+'">Estirar diseño</button><button data-a="fit" data-v="tile" aria-pressed="'+(p.patternFit==="tile")+'">Repetir como tela</button></div></div>':'')+
     '</div>'+
     '<div class="form">'+
     '<span class="eyebrow">'+(p._new?'Nuevo producto':'Editar producto')+'</span>'+
@@ -193,11 +199,11 @@ function editorHTML(){
     '<div class="field"><label for="e-category">Categoría</label><select id="e-category" data-e="category">'+cats().map(function(c){return '<option'+(c===p.category?' selected':'')+'>'+esc(c)+'</option>';}).join("")+'</select>'+
       '<span class="note">Para crear o renombrar categorías usa la pestaña Categorías.</span></div>'+
     '<div class="field"><label>Imágenes</label><div class="slots">'+
-      photoSlot("patternImage","Diseño o estampado","Sube la foto de la tela o el dibujo. Se acomoda sola a la forma del gorro.")+
-      photoSlot("image","Foto del gorro","Una foto real del gorro terminado.")+
+      photoSlot("patternImage","Diseño o estampado","Sube la foto de la tela o el dibujo. Se pega sola en las plantillas: en la cabeza, de frente y extendido.")+
+      photoSlot("image","Foto real","Opcional: una foto real del buff.")+
     '</div></div>'+
-    '<div class="field"><label>Color base del gorro</label><div class="swatches">'+SWATCHES.map(function(c){return '<button class="swatch" style="background:'+c+'" data-a="color" data-v="'+c+'" aria-pressed="'+(p.color===c)+'" aria-label="Color '+c+'"></button>';}).join("")+
-      '<input id="e-color" type="color" value="'+esc(p.color)+'" aria-label="Otro color" class="color-in"></div><span class="note">Se ve cuando no hay diseño, y en las orillas del gorro.</span></div>'+
+    '<div class="field"><label>Color base de la tela</label><div class="swatches">'+SWATCHES.map(function(c){return '<button class="swatch" style="background:'+c+'" data-a="color" data-v="'+c+'" aria-pressed="'+(p.color===c)+'" aria-label="Color '+c+'"></button>';}).join("")+
+      '<input id="e-color" type="color" value="'+esc(p.color)+'" aria-label="Otro color" class="color-in"></div><span class="note">Se ve cuando no hay diseño.</span></div>'+
     '<div class="field"><label for="e-description">Descripción</label><textarea id="e-description" data-e="description" rows="3">'+esc(p.description)+'</textarea></div>'+
     '<div class="two">'+f("pattern","Nombre del diseño")+f("fabric","Tela")+'</div>'+
     f("tag","Etiqueta (ej. Nuevo, Más vendido)")+
@@ -218,6 +224,34 @@ function catsHTML(){
   }).join("");
   return h+'<p class="note">Solo puedes eliminar una categoría cuando ya no tiene productos.</p></div>';
 }
+function tplHTML(){
+  var list=draft.settings.templates;
+  var h='<div class="form"><p class="note">Una plantilla es una foto de tu maniquí con un buff <b>liso y claro</b>. Marcas la tela una sola vez y todos tus diseños se pegan solos ahí, con las sombras y pliegues reales. Puedes tener hasta 6 vistas: en la cabeza, de frente, extendido…</p>'+
+    (list.length<6?'<label class="btn btn-dark file-btn" for="tpl-file">'+icon("plus")+' Nueva plantilla con foto</label><input id="tpl-file" class="file-in" type="file" accept="image/*">':'')+
+    '<p class="note">El orden de aquí es el orden en la tienda: la primera es la imagen principal de cada producto.</p>';
+  if(!list.length) return h+'<div class="empty-tpl"><b>Todavía no tienes plantillas.</b><span class="note">Mientras tanto, la tienda usa las ilustraciones dibujadas.</span></div></div>';
+  var sample=draft.products.find(function(p){return p.patternImage;})||draft.products[0];
+  h+='<div class="tpl-grid">'+list.map(function(t,i){
+    return '<div class="tpl-card"><div class="th photo">'+(sample?MC.visual(sample,"t:"+t.id):'<img src="'+esc(t.photo)+'" alt="">')+'</div>'+
+      '<input id="tpl-name-'+i+'" data-tpl-name="'+i+'" value="'+esc(t.name)+'" maxlength="40" aria-label="Nombre de la vista">'+
+      '<div class="adm-actions"><button class="mini sq" data-a="tpl-up" data-i="'+i+'" aria-label="Mover antes"'+(i===0?' disabled':'')+'>'+icon("up")+'</button>'+
+      '<button class="mini" data-a="tpl-edit" data-i="'+i+'">Ajustar tela</button>'+
+      (ui.confirmDel==="tpl"+i?'<button class="mini danger" data-a="tpl-del-yes" data-i="'+i+'">Sí, borrar</button>':'<button class="mini danger" data-a="tpl-del" data-i="'+i+'">Borrar</button>')+'</div></div>';
+  }).join("")+'</div></div>';
+  return h;
+}
+function openTpl(file,idx){
+  var tpl=idx!=null?draft.settings.templates[idx]:null;
+  TplEditor.open({template:tpl,file:file,products:draft.products,onSave:function(info,blobs){
+    var up=function(b,type){return api("PUT","/api/images/"+uid("img-"),b,type).then(function(d){return d.url;});};
+    return Promise.all([up(blobs.mask,"image/png"),blobs.photo?up(blobs.photo,"image/jpeg"):Promise.resolve(info.keepPhoto)]).then(function(r){
+      var t={id:info.id||uid("t"),name:info.name,photo:r[1],mask:r[0]};
+      if(tpl) draft.settings.templates[idx]=t; else draft.settings.templates.push(t);
+      ui.tab="tpl"; changed(); render(); toast("Plantilla guardada. Dale Publicar cambios para que la vean tus clientes.");
+    });
+  }});
+}
+
 function settingsHTML(){
   var s=draft.settings;
   function f(k,label,area){return '<div class="field"><label for="s-'+k+'">'+label+'</label>'+(area?'<textarea id="s-'+k+'" data-s="'+k+'" rows="4">'+esc(s[k])+'</textarea>':'<input id="s-'+k+'" data-s="'+k+'" value="'+esc(s[k])+'">')+'</div>';}
@@ -269,6 +303,10 @@ app.addEventListener("click",function(ev){
     case "del-no": ui.confirmDel=null; render(); break;
     case "del-yes": draft.products=draft.products.filter(function(p){return p.id!==t.dataset.id;}); ui.confirmDel=null; changed(); render(); break;
     case "cat-up": if(i>0){a=cats(); var y=a[i]; a[i]=a[i-1]; a[i-1]=y; changed(); render();} break;
+    case "tpl-edit": openTpl(null,i); break;
+    case "tpl-up": if(i>0){a=draft.settings.templates; var z=a[i]; a[i]=a[i-1]; a[i-1]=z; changed(); render();} break;
+    case "tpl-del": ui.confirmDel="tpl"+i; render(); break;
+    case "tpl-del-yes": draft.settings.templates.splice(i,1); ui.confirmDel=null; changed(); render(); break;
     case "cat-del": if(!countIn(cats()[i])){cats().splice(i,1); changed(); render();} break;
     case "discard": draft=clone(saved); ui.editing=null; changed(); render(); break;
     case "publish": publish(); break;
@@ -288,6 +326,8 @@ app.addEventListener("change",function(ev){
     p.stock=(v===""||v==="—"||v==="-")?null:Math.max(0,Math.floor(Number(v))||0);
     changed(); render(); return;
   }
+  if(el.id==="tpl-file"&&el.files&&el.files[0]){var f=el.files[0];el.value="";if(!/^image\//.test(f.type)){toast("Ese archivo no es una imagen.");return;}openTpl(f,null);return;}
+  if(el.dataset.tplName!==undefined){var tt=draft.settings.templates[Number(el.dataset.tplName)];tt.name=el.value.trim()||"Plantilla";el.value=tt.name;changed();render();return;}
   if(el.dataset.cat!==undefined){
     var idx=Number(el.dataset.cat), old=cats()[idx], nu=el.value.trim();
     if(!nu||nu===old){render();return;}
